@@ -1,0 +1,88 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String         @id @default(uuid())
+  email           String         @unique
+  password        String
+  name            String         
+  role            Role           @default(COLABORADOR)
+  sector          String?        // <--- NUEVO: Vincula al usuario con su área (IT, RRHH, etc)
+  
+  resetToken      String?
+  resetTokenExp   DateTime?
+  
+  availabilities  Availability[]
+  activitiesCreated Activity[]    @relation("AdminActivities")
+  registrations    Participant[]
+  
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+}
+
+model GroupCode {
+  id        String   @id @default(uuid())
+  code      String   @unique
+  sector    String   // Ej: "INGENIERIA", "FINANZAS"
+  role      Role     @default(COLABORADOR)
+  usedCount Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+model Availability {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  startTime DateTime
+  endTime   DateTime
+  dayOfWeek Int      
+}
+
+model Activity {
+  id              String         @id @default(uuid())
+  title           String
+  description     String?
+  location        String
+  startTime       DateTime
+  endTime         DateTime
+  maxParticipants Int
+  minQuorum       Int            @default(1)
+  status          ActivityStatus @default(PROPUESTA)
+  
+  adminId         String
+  admin           User           @relation("AdminActivities", fields: [adminId], references: [id])
+  
+  participants    Participant[]
+  
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+}
+
+model Participant {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activityId String
+  activity   Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  joinedAt   DateTime @default(now())
+
+  @@unique([userId, activityId]) 
+}
+
+enum Role {
+  COLABORADOR
+  COORDINADOR
+}
+
+enum ActivityStatus {
+  PROPUESTA
+  CONFIRMADA
+  CANCELADA
+  FINALIZADA
+}
